@@ -3,19 +3,12 @@
 #include <stdint.h>
 #include <stdef.h>
 
-struct pb_bin
-{
-    size_t len, cap;
-    uint8_t *data;
-};
-
 struct pb_codec
 {
     uint8_t *it;
     uint8_t *end;
-    struct pb_bin bin;
 };
-
+n
 enum pb_type
 {
     pb_bool,
@@ -25,17 +18,15 @@ enum pb_type
     pb_bytes,
     pb_string,
 
-    pb_32_int,
     pb_32_uint,
     pb_32_sint,
-    pb_32_fixed,
+    pb_32_ufixed,
     pb_32_sfixed,
     pb_32_float,
 
-    pb_64_int,
     pb_64_uint,
     pb_64_sint,
-    pb_64_fixed,
+    pb_64_ufixed,
     pb_64_sfixed,
     pb_64_float,
 };
@@ -65,13 +56,12 @@ union pb_field
 
     float f32;
     double f64;
-    struct pb_bin *bin;
+    struct pb_codec bin;
 };
 
 
-bool pb_init(struct pb_codec *codec);
-bool pb_reset(struct pb_codec *codec, uint8_t *data, size_t len);
-bool pb_free(struct pb_codec *codec);
+void pb_reset(struct pb_codec *codec, uint8_t *data, size_t len);
 
 bool pb_read_tag(struct pb_codec *codec, struct pb_tag *tag);
 bool pb_read_field(struct pb_codec *codec, enum pb_wire wire, enum pb_type type, union pb_field *field);
+bool pb_read_varint(struct pb_codec *codec, enum pb_type type, union pb_field *field);

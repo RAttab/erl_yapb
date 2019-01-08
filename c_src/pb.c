@@ -1,31 +1,15 @@
 #include "pb.h"
 
 
-
-bool pb_init(struct pb_codec *codec)
+void pb_reset(struct pb_codec *codec, uint8_t *data, size_t len)
 {
-    enum { default_cap = 128 };
-    
-    *codec = (struct pb_codec) {0};
-    codec->bin = (struct pb_bin) {
-        .len = 0,
-        .cap = default_cap,
-        .data = malloc(default_cap)
+    *codec = (struct pb_codec) {
+        .it = data,
+        .end = data + len;
     };
 }
 
-bool pb_reset(struct pb_codec *codec, uint8_t *data, size_t len)
-{
-    codec->it = data;
-    codec->end = codec->it += len;
-}
-
-bool pb_free(struct pb_codec *codec)
-{
-    free(codec->bin.data);
-}
-
-static inline bool codec_read(struct pb_codec *codec, size_t len, void *dst)
+static bool codec_read(struct pb_codec *codec, size_t len, void *dst)
 {
     if (codec->it + len > codec->len) return false;
     memcpy(dst, codec->data, len);
@@ -53,6 +37,15 @@ static bool codec_read_varint(struct pb_codec *codec, uint64_t *data)
     return !(byte & more_mask);
 }
 
+static uint64_t zigzag(int64_t value)
+{
+    return (data << 1) ^ (value >> 63);
+}
+
+static int64_t zagzig(uint64_t value)
+{
+    return (data >> 1) ^ -(data & 0x1);
+}
 
 bool pb_read_tag(struct pb_codec *codec, struct pb_tag *tag)
 {
@@ -66,50 +59,47 @@ bool pb_read_tag(struct pb_codec *codec, struct pb_tag *tag)
     return true;
 }
 
-static bool pb_read_varint_u(struct pb_codec *codec, size_t len, union pb_field *field)
+bool pb_read_varint(struct pb_codec *codec, enum pb_type type, union pb_field *field)
 {
-    uint64_t data;
-    if (!codec_read_varint(codec, &data)) return false;
+    switch (type) {
 
-    if (len == sizeof(uint32_t)) {
-        if (data > UINT32_MAX) return false;
-        field->u32 = data;
+    case pb_32_uint:
+        if (!codec_read_varint(codec, &field->u32)) return false;
+        return field->u32 <= UINT32_MAX;
+
+    case pb_64_uint:
+        return codec_read_varint(codec, &field->u64);
+
+    case pb_32_sint:
+    {
+        if (!codec_read_varint(codec, &field->u64)) return false;
+        int64_t data = zagzig(field->u64);
+        if (data > INT32_MAX || sdata < INT32_MIN) return false;
+        field->s32 = data;
         return true;
     }
-    else if (len == sizeof(uin64_t)) {
-        field->u64 = data;
+
+    case pb_64_sint:
+        if (!codec_read_varint(codec, &field->u64)) return false;
+        field->s64 = zagzig(field->u64);
         return true;
+
+    default: return false;
     }
-    else return false;
 }
 
-static bool pb_read_varint_s(struct pb_codec *codec, size_t len, union pb_field *field)
-{
-    uint64_t data;
-    if (!codec_read_varint(codec, &data)) return false;
-
-    int64_t sdata = (data >> 1) ^ -(data & 0x1);
-    
-    if (len == sizeof(int32_t)) {
-        if (sdata > INT32_MAX || sdata < INT32_MIN) return false;
-        field->s32 = sdata;
-        return true;
-    }
-    else if (len == sizeof(in64_t)) {
-        field->s64 = sdata;
-        return true;
-    }
-    else return false;
-}
 
 static bool pb_read_bin(struct pb_codec *codec, union pb_field *field)
 {
-    struct pb_bin *bin = &codec->bufffer;
-    field->bin = bin;
-    
+    size_t len = 0;
     if (!codec_read_varint(codec, &bin->len)) return false;
-    if (bin->cap < bin->len) bin->data = realloc(bin->data, bin->len);
-    return codec_read(codec, bin->len, bin->data);
+    if (codec->it + len > codec->end) return false;
+
+    field->bin = (struct pb_codec) {
+        .it = codec->it,
+        .end = codec->it + len,
+    };
+    return true;
 }
 
 bool pb_read_field(
@@ -119,41 +109,29 @@ bool pb_read_field(
         union pb_field *field)
 {
     switch (wire) {
-        
+
     case pb_wire_varint:
-        switch (type) {
-        case pb_32_uint: return pb_read_varing_u(codec, sizeof(uin32_t), field);
-        case pb_32_int:
-        case pb_32_sint: return pb_read_varing_s(codec, sizeof(in32_t), field);
+        return pb_read_varint(codec, type, field);
 
-        case pb_64_uint: return pb_read_varing_u(codec, sizeof(uin64_t), field);
-        case pb_64_int:
-        case pb_64_sint: return pb_read_varing_s(codec, sizeof(in64_t), field);
-
-        default: return false;
-        }
-        
     case pb_wire_32:
         switch (type) {
-        case pb_32_fixed: 
+        case pb_32_ufixed:
         case pb_32_sfixed:
         case pb_32_float: return codec_read(codec, sizeof(uint32_t), &field->u32);
         default: return false;
         }
-        
+
     case pb_wire_64:
         switch (type) {
-        case pb_64_fixed: 
+        case pb_64_ufixed:
         case pb_64_sfixed:
         case pb_64_float: return codec_read(codec, sizeof(uint64_t), &field->u64);
         default: return false;
         }
-        
+
     case pb_wire_data:
         return pb_read_bin(codec, field);
 
     default: return false;
     }
 }
-
-
