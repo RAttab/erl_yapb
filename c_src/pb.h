@@ -3,12 +3,12 @@
 #include <stdint.h>
 #include <stdef.h>
 
-struct pb_codec
+struct pb_reader
 {
     uint8_t *it;
     uint8_t *end;
 };
-n
+
 enum pb_type
 {
     pb_bool,
@@ -60,8 +60,7 @@ union pb_field
 };
 
 
-void pb_reset(struct pb_codec *codec, uint8_t *data, size_t len);
-
-bool pb_read_tag(struct pb_codec *codec, struct pb_tag *tag);
-bool pb_read_field(struct pb_codec *codec, enum pb_wire wire, enum pb_type type, union pb_field *field);
-bool pb_read_varint(struct pb_codec *codec, enum pb_type type, union pb_field *field);
+void pb_read_init(struct pb_reader *, uint8_t *data, size_t len);
+bool pb_read_tag(struct pb_reader *, struct pb_tag *);
+bool pb_read_field(struct pb_reader *, enum pb_wire, enum pb_type, union pb_field *);
+bool pb_read_varint(struct pb_reader *, enum pb_type, union pb_field *);
