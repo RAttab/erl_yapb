@@ -36,6 +36,6 @@ done
 $CC -o ./priv/libyapb.so -shared $OBJ
 
 for test in "${TEST[@]}"; do
-    $CC -o "priv/test_$test" "c_src/test_$test.c" $CFLAGS
-    "priv/test_$test"
+    $CC -o "priv/$test.test" "c_src/test_$test.c" $CFLAGS
+    "priv/$test.test"
 done

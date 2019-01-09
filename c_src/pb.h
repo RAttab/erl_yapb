@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+typedef uint64_t pb_field_t;
+
 struct pb_reader
 {
     uint8_t *it;
@@ -37,16 +39,16 @@ enum pb_wire
     pb_wire_varint = 0,
     pb_wire_32 = 5,
     pb_wire_64 = 1,
-    pb_wire_data = 2
+    pb_wire_bytes = 2
 };
 
 struct pb_tag
 {
-    uint32_t field;
+    pb_field_t field;
     enum pb_wire wire;
 };
 
-union pb_field
+union pb_value
 {
     bool b;
     
@@ -63,5 +65,26 @@ union pb_field
 
 void pb_read_init(struct pb_reader *, uint8_t *data, size_t len);
 bool pb_read_tag(struct pb_reader *, struct pb_tag *);
-bool pb_read_field(struct pb_reader *, enum pb_wire, enum pb_type, union pb_field *);
-bool pb_read_varint(struct pb_reader *, enum pb_type, union pb_field *);
+bool pb_read_field(struct pb_reader *, enum pb_wire, enum pb_type, union pb_value *);
+bool pb_read_varint(struct pb_reader *, enum pb_type, union pb_value *);
+
+struct pb_buffer
+{
+    size_t cap;
+    uint8_t *data;
+};
+
+void pb_buffer_resize(struct pb_buffer *, size_t cap);
+void pb_buffer_free(struct pb_buffer *);
+
+struct pb_writer
+{
+    uint8_t *it;
+    uint8_t *end;
+    struct pb_buffer *buffer;
+};
+
+        
+void pb_write_init(struct pb_writer *, struct pb_buffer *);
+bool pb_write_field(struct pb_writer *, pb_field_t field, enum pb_type, union pb_value);
+bool pb_write_varint(struct pb_writer *, enum pb_type, union pb_value);
