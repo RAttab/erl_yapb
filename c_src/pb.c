@@ -1,31 +1,20 @@
 #include "pb.h"
 
+#include <string.h>
 
 void pb_read_init(struct pb_reader *reader, uint8_t *data, size_t len)
 {
     *reader = (struct pb_reader) {
         .it = data,
-        .end = data + len;
+        .end = data + len
     };
 }
 
 static bool read_data(struct pb_reader *reader, size_t len, void *dst)
 {
-    if (reader->it + len > reader->len) return false;
-    memcpy(dst, reader->data, len);
-    reader->it += len;
-}
-
-static bool read_bin(struct pb_reader *reader, union pb_field *field)
-{
-    size_t len = 0;
-    if (!reader_read_varint(reader, &bin->len)) return false;
     if (reader->it + len > reader->end) return false;
-
-    field->bin = (struct pb_reader) {
-        .it = reader->it,
-        .end = reader->it + len,
-    };
+    memcpy(dst, reader->it, len);
+    reader->it += len;
     return true;
 }
 
@@ -50,20 +39,28 @@ static bool read_varint(struct pb_reader *reader, uint64_t *data)
     return !(byte & more_mask);
 }
 
-static uint64_t zigzag(int64_t value)
+static bool read_bin(struct pb_reader *reader, struct pb_reader *bin)
 {
-    return (data << 1) ^ (value >> 63);
+    size_t len = 0;
+    if (!read_varint(reader, &len)) return false;
+    if (reader->it + len > reader->end) return false;
+
+    *bin = (struct pb_reader) {
+        .it = reader->it,
+        .end = reader->it + len,
+    };
+    return true;
 }
 
 static int64_t zagzig(uint64_t value)
 {
-    return (data >> 1) ^ -(data & 0x1);
+    return (value >> 1) ^ -(value & 0x1);
 }
 
 bool pb_read_tag(struct pb_reader *reader, struct pb_tag *tag)
 {
-    uint32_t data = 0;
-    if (!reader_read_varint(reader, &data)) return false;
+    uint64_t data = 0;
+    if (!read_varint(reader, &data)) return false;
 
     *tag = (struct pb_tag) {
         .field = data >> 3,
@@ -77,8 +74,13 @@ bool pb_read_varint(struct pb_reader *reader, enum pb_type type, union pb_field 
     switch (type) {
 
     case pb_32_uint:
-        if (!read_varint(reader, &field->u32)) return false;
-        return field->u32 <= UINT32_MAX;
+    {
+        uint64_t data = 0;
+        if (!read_varint(reader, &data)) return false;
+        if (data <= UINT32_MAX) return false;
+        field->u32 = data;
+        return true;
+    }
 
     case pb_bool:
     case pb_enum:
@@ -89,7 +91,7 @@ bool pb_read_varint(struct pb_reader *reader, enum pb_type type, union pb_field 
     {
         if (!read_varint(reader, &field->u64)) return false;
         int64_t data = zagzig(field->u64);
-        if (data > INT32_MAX || sdata < INT32_MIN) return false;
+        if (data > INT32_MAX || data < INT32_MIN) return false;
         field->s32 = data;
         return true;
     }
@@ -131,8 +133,14 @@ bool pb_read_field(
         }
 
     case pb_wire_data:
-        return read_bin(reader, field);
+        return read_bin(reader, &field->bin);
 
     default: return false;
     }
 }
+
+// to be used in encoder
+/* static uint64_t zigzag(int64_t value) */
+/* { */
+/*     return (value << 1) ^ (value >> 63); */
+/* } */

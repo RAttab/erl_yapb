@@ -1,7 +1,8 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdef.h>
+#include <stddef.h>
+#include <stdbool.h>
 
 struct pb_reader
 {
@@ -47,8 +48,8 @@ struct pb_tag
 
 union pb_field
 {
-    bool bool;
-
+    bool b;
+    
     int32_t s32;
     uint32_t u32;
     int64_t s64;
@@ -56,7 +57,7 @@ union pb_field
 
     float f32;
     double f64;
-    struct pb_codec bin;
+    struct pb_reader bin;
 };
 
 
