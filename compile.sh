@@ -3,7 +3,7 @@
 set -o errexit -o nounset -o pipefail -o xtrace
 
 declare -a SRC
-SRC=(pb)
+SRC=(htable pb)
 
 declare -a TEST
 TEST=()
@@ -29,13 +29,13 @@ CFLAGS="$CFLAGS -Wno-implicit-fallthrough"
 
 OBJ=""
 for src in "${SRC[@]}"; do
-    $CC -c -o "c_src/$src.o" "c_src/$src.c" $CFLAGS
-    OBJ="$OBJ c_src/$src.o"
+    $CC -c -o "./c_src/$src.o" "./c_src/$src.c" $CFLAGS
+    OBJ="$OBJ ./c_src/$src.o"
 done
 
 $CC -o ./priv/libyapb.so -shared $OBJ
 
 for test in "${TEST[@]}"; do
-    $CC -o "priv/$test.test" "c_src/test_$test.c" $CFLAGS
-    "priv/$test.test"
+    $CC -o "./priv/$test.test" "./c_src/${test}_test.c" ./priv/libyapb.so $CFLAGS
+    "./priv/$test.test"
 done
