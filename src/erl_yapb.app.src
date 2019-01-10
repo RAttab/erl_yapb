@@ -1,0 +1,10 @@
+{application, erl_yapb, [
+    {description, "A Google Protobuf implementation for Erlang."},
+    {vsn, "git"},
+    {registered, []},
+    {applications, [kernel, stdlib]},
+    {env,[]},
+    {modules, [
+        erl_yapb
+    ]}
+]}.
