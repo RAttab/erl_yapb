@@ -6,7 +6,7 @@ declare -a SRC
 SRC=(htable pb)
 
 declare -a TEST
-TEST=()
+TEST=(pb)
 
 CC=${OTHERC:-gcc}
 
@@ -34,8 +34,9 @@ for src in "${SRC[@]}"; do
 done
 
 $CC -o ./priv/libyapb.so -shared $OBJ
+ar rcs ./priv/libyapb.a $OBJ # for tests
 
 for test in "${TEST[@]}"; do
-    $CC -o "./priv/$test.test" "./c_src/${test}_test.c" ./priv/libyapb.so $CFLAGS
+    $CC -o "./priv/$test.test" "./c_src/${test}_test.c" ./priv/libyapb.a $CFLAGS
     "./priv/$test.test"
 done
