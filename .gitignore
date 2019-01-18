@@ -11,5 +11,6 @@ rel/example_project
 _build
 
 c_src/*.o
+priv/*.a
 priv/*.so
 priv/*.test

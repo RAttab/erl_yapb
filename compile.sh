@@ -10,6 +10,9 @@ TEST=(pb)
 
 CC=${OTHERC:-gcc}
 
+OUT="./priv"
+IN="./c_src"
+
 CFLAGS="-ggdb -O3 -pipe -std=gnu11 -D_GNU_SOURCE"
 
 CFLAGS="$CFLAGS -fPIC"
@@ -29,14 +32,16 @@ CFLAGS="$CFLAGS -Wno-implicit-fallthrough"
 
 OBJ=""
 for src in "${SRC[@]}"; do
-    $CC -c -o "./c_src/$src.o" "./c_src/$src.c" $CFLAGS
-    OBJ="$OBJ ./c_src/$src.o"
+    $CC -c -o "$IN/$src.o" "$IN/$src.c" $CFLAGS
+    OBJ="$OBJ $IN/$src.o"
 done
 
-$CC -o ./priv/libyapb.so -shared $OBJ
-ar rcs ./priv/libyapb.a $OBJ # for tests
+if [ ! -d $OUT ]; then mkdir $OUT; fi
+
+$CC -o $OUT/libyapb.so -shared $OBJ
+ar rcs $OUT/libyapb.a $OBJ # for tests
 
 for test in "${TEST[@]}"; do
-    $CC -o "./priv/$test.test" "./c_src/${test}_test.c" ./priv/libyapb.a $CFLAGS
-    "./priv/$test.test"
+    $CC -o "$OUT/$test.test" "$IN/${test}_test.c" $OUT/libyapb.a $CFLAGS
+    "$OUT/$test.test"
 done
