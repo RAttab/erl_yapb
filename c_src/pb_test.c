@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <float.h>
+#include <string.h>
 
 #if 0
 # include <stdio.h>
@@ -93,7 +94,14 @@ void check_impl(struct htable entries)
             union pb_value value = {0};
             assert(pb_read_field(&reader, tag.wire, entry->type, &value));
 
-            assert(value.u64 == entry->value.u64);
+            if (tag.wire != pb_wire_bytes)
+                assert(value.u64 == entry->value.u64);
+            else {
+                size_t len = entry->value.bin.end - entry->value.bin.it;
+                assert((value.bin.end - value.bin.it) == (ssize_t) len);
+                assert(!memcmp(value.bin.it, entry->value.bin.it, len));
+            }
+
             assert(htable_put(&result, entry->field, 0).ok);
         }
     }
@@ -115,6 +123,7 @@ void check_impl(struct htable entries)
 
     htable_reset(&result);
     htable_reset(&entries);
+    pb_buffer_free(&buffer);
 }
 
 
@@ -127,6 +136,14 @@ void check_impl(struct htable entries)
 
 #define value(type, value) \
     (union pb_value) { .type = value }
+
+#define value_str(str)                                  \
+    (union pb_value) {                                  \
+        .bin = (struct pb_reader) {                     \
+            .it = (const uint8_t *) str,                \
+            .end = (const uint8_t *) str + sizeof(str)  \
+        }                                               \
+    }
 
 
 void type_test(void)
@@ -161,16 +178,20 @@ void type_test(void)
     check(entry(44, pb_64_sfixed, value(s64, INT64_MAX)));
 
     check(entry(50, pb_32_float, value(f32, 0.0)));
-    check(entry(50, pb_32_float, value(f32, FLT_MIN)));
-    check(entry(50, pb_32_float, value(f32, FLT_TRUE_MIN)));
-    check(entry(50, pb_32_float, value(f32, FLT_MAX)));
-    check(entry(50, pb_32_float, value(f32, FLT_EPSILON)));
+    check(entry(51, pb_32_float, value(f32, FLT_MIN)));
+    check(entry(52, pb_32_float, value(f32, FLT_TRUE_MIN)));
+    check(entry(53, pb_32_float, value(f32, FLT_MAX)));
+    check(entry(54, pb_32_float, value(f32, FLT_EPSILON)));
 
-    check(entry(50, pb_64_float, value(f64, 0.0)));
-    check(entry(50, pb_64_float, value(f64, DBL_MIN)));
-    check(entry(50, pb_64_float, value(f64, DBL_TRUE_MIN)));
-    check(entry(50, pb_64_float, value(f64, DBL_MAX)));
-    check(entry(50, pb_64_float, value(f64, DBL_EPSILON)));
+    check(entry(60, pb_64_float, value(f64, 0.0)));
+    check(entry(61, pb_64_float, value(f64, DBL_MIN)));
+    check(entry(62, pb_64_float, value(f64, DBL_TRUE_MIN)));
+    check(entry(63, pb_64_float, value(f64, DBL_MAX)));
+    check(entry(64, pb_64_float, value(f64, DBL_EPSILON)));
+
+    check(entry(70, pb_string, value_str("")));
+    check(entry(71, pb_string, value_str("a")));
+    check(entry(72, pb_string, value_str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
 }
 
 

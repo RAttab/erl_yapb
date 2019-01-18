@@ -55,6 +55,8 @@ static bool read_bytes(struct pb_reader *reader, struct pb_reader *bin)
         .it = reader->it,
         .end = reader->it + len,
     };
+
+    reader->it += len;
     return true;
 }
 
@@ -217,7 +219,7 @@ static void write_tag(struct pb_writer *writer, pb_field_t field, enum pb_wire w
     write_varint(writer, field << 3 | wire);
 }
 
-static void write_data(struct pb_writer *writer, size_t len, void *data)
+static void write_data(struct pb_writer *writer, size_t len, const void *data)
 {
     pb_write_ensure(writer, len);
     memcpy(writer->it, data, len);
@@ -272,6 +274,7 @@ bool pb_write_field(
     case pb_message:
     case pb_bytes:
         write_tag(writer, field, pb_wire_bytes);
+        write_varint(writer, value.bin.end - value.bin.it);
         write_data(writer, value.bin.end - value.bin.it, value.bin.it);
         return true;
 

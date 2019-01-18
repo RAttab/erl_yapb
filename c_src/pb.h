@@ -50,8 +50,8 @@ struct pb_buffer
 
 struct pb_reader
 {
-    uint8_t *it;
-    uint8_t *end;
+    const uint8_t *it;
+    const uint8_t *end;
 };
 
 struct pb_writer
