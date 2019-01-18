@@ -83,7 +83,7 @@ bool pb_read_varint(struct pb_reader *reader, enum pb_type type, union pb_value 
     {
         uint64_t data = 0;
         if (!read_varint(reader, &data)) return false;
-        if (data <= UINT32_MAX) return false;
+        if (data > UINT32_MAX) return false;
         value->u32 = data;
         return true;
     }
@@ -178,7 +178,7 @@ static void pb_write_ensure(struct pb_writer *writer, size_t len)
 {
     if (writer->it + len <= writer->end) return;
 
-    size_t pos = writer->end - writer->it;
+    size_t pos = writer->it - writer->buffer->data;
     pb_buffer_resize(writer->buffer, (writer->it - writer->buffer->data) + len);
 
     writer->it = writer->buffer->data + pos;
@@ -221,7 +221,7 @@ static void write_data(struct pb_writer *writer, size_t len, void *data)
 {
     pb_write_ensure(writer, len);
     memcpy(writer->it, data, len);
-    writer->it++;
+    writer->it += len;
 }
 
 bool pb_write_varint(struct pb_writer *writer, enum pb_type type, union pb_value value)
