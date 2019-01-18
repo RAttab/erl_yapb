@@ -30,9 +30,6 @@ struct htable make_entries_impl(struct entry **entries, size_t len)
 }
 
 
-#define value(type, value) \
-    (union pb_value) { .type = value }
-
 
 
 void check_impl(struct htable entries)
@@ -95,17 +92,23 @@ void check_impl(struct htable entries)
     htable_reset(&entries);
 }
 
+
 #define check(...)                                                      \
     do {                                                                \
         struct entry *raw[] = { __VA_ARGS__ };                          \
         check_impl(make_entries_impl(raw, sizeof(raw) / sizeof(raw[0]))); \
     } while (false);
 
+
+#define value(type, value) \
+    (union pb_value) { .type = value }
+
+
 void basic_test(void)
 {
     check(
-            entry(0, pb_bool, value(b, 1)),
-            entry(1, pb_32_sint, value(s32, -12)));
+            entry(1, pb_bool, value(b, 1)),
+            entry(2, pb_32_sint, value(s32, -12)));
 }
 
 

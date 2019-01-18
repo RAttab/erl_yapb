@@ -177,7 +177,12 @@ void pb_write_init(struct pb_writer *writer, struct pb_buffer *buffer)
 static void pb_write_ensure(struct pb_writer *writer, size_t len)
 {
     if (writer->it + len <= writer->end) return;
+
+    size_t pos = writer->end - writer->it;
     pb_buffer_resize(writer->buffer, (writer->it - writer->buffer->data) + len);
+
+    writer->it = writer->buffer->data + pos;
+    writer->end = writer->buffer->data + writer->buffer->cap;
 }
 
 static uint64_t zigzag(int64_t value)
@@ -255,7 +260,7 @@ bool pb_write_field(
         write_tag(writer, field, pb_wire_32);
         write_data(writer, sizeof(value.u32), &value.u32);
         return true;
-        
+
     case pb_64_ufixed:
     case pb_64_sfixed:
     case pb_64_float:
