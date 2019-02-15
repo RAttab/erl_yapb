@@ -4,7 +4,8 @@
 -on_load(init/0).
 
 -export([
-    encode/0
+    encode/0,
+    decode/3
 ]).
 
 init() ->
@@ -27,4 +28,7 @@ nif_stub_error(Line) ->
     erlang:nif_error({nif_not_loaded,module,?MODULE,line,Line}).
 
 encode() ->
+    ?nif_stub.
+
+decode(_Bin, _Name, _Defs) ->
     ?nif_stub.
