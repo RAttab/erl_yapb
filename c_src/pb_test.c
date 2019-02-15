@@ -1,5 +1,5 @@
 #include "pb.h"
-#include "htable.h"
+#include "utils/htable.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -8,7 +8,7 @@
 #include <float.h>
 #include <string.h>
 
-#if 0
+#if 1
 # include <stdio.h>
 # define debug(fmt) fprintf(stderr, fmt)
 # define debuga(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)

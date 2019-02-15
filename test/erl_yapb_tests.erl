@@ -26,6 +26,8 @@ new_test() ->
        d = [67, 68, 69]
       },
 
+    Schema = erl_yapb:add_schema(Defs),
+
     Bin = gpb:encode_msg(M4, Defs),
     %?debugVal(Bin),
     Gpb = gpb:decode_msg(Bin, m4, Defs),

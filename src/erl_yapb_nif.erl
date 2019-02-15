@@ -5,7 +5,8 @@
 
 -export([
     encode/0,
-    decode/3
+    decode/3,
+    add_schema/1
 ]).
 
 init() ->
@@ -31,4 +32,7 @@ encode() ->
     ?nif_stub.
 
 decode(_Bin, _Name, _Defs) ->
+    ?nif_stub.
+
+add_schema(_Schema) ->
     ?nif_stub.

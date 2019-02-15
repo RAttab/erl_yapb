@@ -3,7 +3,7 @@
 set -o errexit -o nounset -o pipefail -o xtrace
 
 declare -a SRC
-SRC=(htable pb pb_nif)
+SRC=(utils/htable pb pb_nif)
 
 declare -a TEST
 TEST=(pb)
