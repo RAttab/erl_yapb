@@ -5,8 +5,8 @@
 
 -record(m4, {a, b, c, d}).
 
-basic_test() ->
-    ok = erl_yapb:decode(<<"Derp">>, 1, 1).
+%basic_test() ->
+%    ok = erl_yapb:decode(<<"Derp">>, 1, 1).
 
 new_test() ->
     Defs = [

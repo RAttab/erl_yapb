@@ -75,22 +75,6 @@ union pb_value
     struct pb_reader bin;
 };
 
-struct pb_message
-{
-    int32_t count;
-    struct pb_field_def *fields;
-};
-
-struct pb_field_def
-{
-    char name[50];
-    int32_t fnum;
-    int32_t rnum;
-    enum pb_type type;
-    //occurence;
-    //opts;
-};
-
 void pb_read_init(struct pb_reader *, uint8_t *data, size_t len);
 bool pb_read_tag(struct pb_reader *, struct pb_tag *);
 bool pb_read_field(struct pb_reader *, enum pb_wire, enum pb_type, union pb_value *);
