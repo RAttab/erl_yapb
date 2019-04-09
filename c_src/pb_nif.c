@@ -1,41 +1,26 @@
 #include "erl_nif.h"
 #include "pb_nif.h"
-#include "pb.h"
+#include "cache.h"
+#include "field.h"
 #include "utils/htable.h"
 #include "utils/type_pun.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-static ERL_NIF_TERM ATOM_INT32;
 static void init(ErlNifEnv* env, struct pb_state *state)
 {
     state->atom_ok = enif_make_atom(env, "ok");
-    ATOM_INT32 = enif_make_atom(env, "int32");
-}
-
-struct entry
-{
-    pb_field_t field;
-    enum pb_type type;
-    union pb_value value;
-};
-
-struct htable make_entries_impl(struct entry **entries, size_t len)
-{
-    struct htable htable = {0};
-    htable_reserve(&htable, len);
-
-    for (size_t i = 0; i < len; i++)
-        htable_put(&htable, entries[i]->field, (uint64_t) entries[i]);
-
-    return htable;
+    state->atom_int32 = enif_make_atom(env, "int32");
+    state->atom_true = enif_make_atom(env, "true");
+    state->atom_false = enif_make_atom(env, "false");
 }
 
 static int load(ErlNifEnv* env, void **priv_data, yapb_unused ERL_NIF_TERM load_info)
 {
     struct pb_state *state;
-    state = enif_alloc(sizeof(struct pb_state));
+    state = enif_alloc(sizeof(*state));
+    memset(state, 0, sizeof(*state));
 
     init(env, state);
 
@@ -46,6 +31,7 @@ static int load(ErlNifEnv* env, void **priv_data, yapb_unused ERL_NIF_TERM load_
 
 static void unload(ErlNifEnv *env, yapb_unused void *priv_data){
     struct pb_state *state = (struct pb_state *) enif_priv_data(env);
+    htable_reset(&state->defs);
     enif_free(state);
 }
 
@@ -57,27 +43,37 @@ static ERL_NIF_TERM nif_encode(ErlNifEnv* env, yapb_unused int argc, yapb_unused
 
 static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_NIF_TERM argv[])
 {
-    struct htable result = {0};
-    ErlNifBinary    bin;
-    enif_fprintf(stderr, "decode: %T\n", argv[2]);
+    ErlNifBinary bin;
+    enif_fprintf(stderr, "decode: %T\n", argv[0]);
     struct pb_reader reader = {0};
     struct pb_state *state = (struct pb_state *) enif_priv_data(env);
     enif_inspect_binary(env, argv[0], &bin);
-    uint8_t *value = (uint8_t *) alloc_string(bin);
-    pb_read_init(&reader, value, sizeof(argv[0]));
+    pb_read_init(&reader, bin.data, bin.size);
+
+    struct htable_ret ret = htable_get(&state->defs, pun_ttoi(argv[1]));
+    assert(ret.ok);
+    const struct pb_message *message = pun_itom(ret.value);
+
+    ERL_NIF_TERM *terms = enif_alloc(sizeof(*terms) * message->count + 1);
 
     //struct htable_ret ret = htable_get(&entries, tag.field);
+    terms[0] = argv[1];
     while (reader.it != reader.end) {
         struct pb_tag tag = {0};
         pb_read_tag(&reader, &tag);
         enif_fprintf(stderr, "tag: field=%lu, wire=%d\n", tag.field, tag.wire);
 
-    //    struct htable_ret ret = htable_get(&entries, tag.field);
-    //    assert(ret.ok);
-    //    struct entry *entry = (struct entry *) ret.value;
+        const struct pb_field_cache *field = find_field(message, tag.field);
 
-    //    union pb_value value = {0};
-    //    assert(pb_read_field(&reader, tag.wire, entry->type, &value));
+        union pb_value value = {0};
+        assert(pb_read_field(&reader, tag.wire, field->type, &value));
+
+        enif_fprintf(stderr, "fuck: %u\n", tag.field);
+        terms[tag.field] = make_term_from_type(env, field->type, &value);
+
+        //enif_fprintf(stderr, "HAHAHAH: %u\n", tag.wire);
+        //enif_fprintf(stderr, "HAHAHAH: %u\n", field->type);
+        //enif_fprintf(stderr, "HAHAHAH: %u\n", value.s32);
 
     //    if (tag.wire != pb_wire_bytes)
     //        assert(value.u64 == entry->value.u64);
@@ -89,50 +85,42 @@ static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_N
 
     //    assert(htable_put(&result, entry->field, 0).ok);
     }
-    print_map(&result);
+
+    ERL_NIF_TERM decoded = enif_make_tuple_from_array(env, terms, message->count + 1);
+    enif_fprintf(stderr, "DERPNESS: %T\n", decoded);
+    //print_map(&result);
     print_map(&state->defs);
-    return state->atom_ok;
+    return decoded;
 }
 
 static ERL_NIF_TERM nif_add_schema(ErlNifEnv* env, yapb_unused int argc, const ERL_NIF_TERM argv[])
 {
-    //char msg_name[50];
-    //char type[50];
+    struct htable htable = {0};
     unsigned int len;
-    ERL_NIF_TERM head, tail, next;
-    const ERL_NIF_TERM *array, *msg_array, *field_array = NULL;
+    ERL_NIF_TERM head, msg_tail, field_tail, meh, next;
+    const ERL_NIF_TERM *array, *msg_array = NULL;
     int32_t arity;
     struct pb_state *state = (struct pb_state *) enif_priv_data(env);
 
-    struct htable htable = {0};
-
     next = argv[0];
-    // loop over messages
     enif_get_list_length(env, next, &len);
-    htable_reserve(&htable, len);
-    while (enif_get_list_cell(env, next, &head, &tail)) {
+    initialize_cache(&htable, len);
+    // loop over messages
+    while (enif_get_list_cell(env, next, &head, &msg_tail)) {
         unsigned int fields_len;
-        enif_get_list_cell(env, argv[0], &head, &tail);
+        enif_get_list_cell(env, argv[0], &head, &meh);
         enif_get_tuple(env, head, &arity, &array);
         // fields are in array[1]
         // get message name
         enif_get_tuple(env, array[0], &arity, &msg_array);
-        //enif_get_atom(env, msg_array[1], msg_name, 50, ERL_NIF_LATIN1);
         next = array[1];
         enif_get_list_length(env, next, &fields_len);
-        //struct pb_field_def *fields = calloc(fields_len, sizeof(*fields));
-        struct pb_field_def *fields = enif_alloc(fields_len * sizeof(*fields));
+        struct pb_field_cache *fields = enif_alloc(fields_len * sizeof(*fields));
         for (unsigned int i = 0; i < fields_len; i++) {
-            enif_get_list_cell(env, next, &head, &tail);
-            enif_get_tuple(env, head, &arity, &field_array);
-            enif_fprintf(stderr, "head: %T\n", head);
-            enif_get_int(env, field_array[2], &fields[i].fnum);
-            enif_get_int(env, field_array[3], &fields[i].rnum);
+            enif_get_list_cell(env, next, &head, &field_tail);
+            parse_field(env, head, &fields[i]);
             fields[i].name = msg_array[1];
-            //enif_get_atom(env, field_array[4], type, 50, ERL_NIF_LATIN1);
-            parse_type(&fields[0], field_array[4]);
-            enif_fprintf(stderr, "type: %u\n", fields[i].type);
-            next = tail;
+            next = field_tail;
         }
 
         struct pb_message *message = enif_alloc(sizeof(*message));
@@ -140,10 +128,9 @@ static ERL_NIF_TERM nif_add_schema(ErlNifEnv* env, yapb_unused int argc, const E
         message->fields = fields;
         htable_put(&htable, pun_ttoi(msg_array[1]), pun_mtoi(message));
 
-        next = tail;
+        next = msg_tail;
     }
 
-    //(void) state->defs;
     state->defs = htable;
     print_map(&state->defs);
     enif_fprintf(stderr, "HERE: %T\n", state->atom_ok);
@@ -158,38 +145,38 @@ void print_map(struct htable *htable)
             bucket = htable_next(htable, bucket))
     {
 
-        struct pb_message msg = pun_itom(bucket->value);
-        for (int i = 0; i < msg.count; i++) {
-            enif_fprintf(stderr, "fields len: %u\n", msg.count);
-            enif_fprintf(stderr, "fnum: %u\n", msg.fields[i].fnum);
-            enif_fprintf(stderr, "rnum: %u\n", msg.fields[i].rnum);
-            enif_fprintf(stderr, "name: %T\n", msg.fields[i].name);
-            //(void) msg;
+        struct pb_message *msg = pun_itom(bucket->value);
+        for (int i = 0; i < msg->count; i++) {
+            enif_fprintf(stderr, "fields len: %u\n", msg->count);
+            enif_fprintf(stderr, "fnum: %u\n", msg->fields[i].fnum);
+            enif_fprintf(stderr, "rnum: %u\n", msg->fields[i].rnum);
+            enif_fprintf(stderr, "name: %T\n", msg->fields[i].name);
         }
     }
     //struct htable_ret ret = htable_get(&htable, msg_name);
 }
 
-static char *alloc_string(ErlNifBinary bin)
-{
-    size_t key_len = bin.size;
-    char *key = enif_alloc((key_len + 1) * sizeof(*key));
-    if (!key) {
-        return NULL;
-    }
+//static char *alloc_string(ErlNifBinary bin)
+//{
+//    size_t key_len = bin.size;
+//    char *key = enif_alloc((key_len + 1) * sizeof(*key));
+//    if (!key) {
+//        return NULL;
+//    }
+//
+//    memcpy(key, bin.data, key_len);
+//
+//    key[key_len] = 0;
+//
+//    return key;
+//}
 
-    memcpy(key, bin.data, key_len);
-
-    key[key_len] = 0;
-
-    return key;
-}
-
-void parse_type(struct pb_field_def *field, ERL_NIF_TERM type)
-{
-    if (type == ATOM_INT32) { field->type = pb_32_uint; }
-    //else if (term == state->atom_int64)     { field->type = field_int64; return RET_OK; }
-}
+//void infer_schema(struct pb_field_cache *fields, pb_tag tag)
+//{
+//    for (size_t i = 0; i < sizeof(fields); i++){
+//        fields[i]
+//    }
+//}
 
 static ErlNifFunc nif_functions[] = {
     {"encode", 0, nif_encode, 0},

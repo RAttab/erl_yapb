@@ -3,7 +3,7 @@
 set -o errexit -o nounset -o pipefail -o xtrace
 
 declare -a SRC
-SRC=(utils/htable pb pb_nif)
+SRC=(utils/htable pb pb_nif cache field)
 
 declare -a TEST
 TEST=(pb)
@@ -28,7 +28,7 @@ CFLAGS="$CFLAGS -fPIC"
 CFLAGS="$CFLAGS -fvisibility=hidden"
 CFLAGS="$CFLAGS -fno-strict-aliasing"
 
-CFLAGS="$CFLAGS -Werror -Wall -Wextra"
+CFLAGS="$CFLAGS -Wall -Wextra"
 CFLAGS="$CFLAGS -Wundef"
 CFLAGS="$CFLAGS -Wcast-align"
 CFLAGS="$CFLAGS -Wwrite-strings"
@@ -39,8 +39,8 @@ CFLAGS="$CFLAGS -Winit-self"
 CFLAGS="$CFLAGS -Wno-strict-aliasing"
 CFLAGS="$CFLAGS -Wno-implicit-fallthrough"
 
-CFLAGS="$CFLAGS -I${ERTS_INCLUDE_DIR} -I${ERL_INCLUDE_DIR}"
-LDFLAGS="-L${ERL_LIB_DIR} -lei ${LDFLAGS:-}"
+CFLAGS="$CFLAGS -gdwarf -I${ERTS_INCLUDE_DIR} -I${ERL_INCLUDE_DIR}"
+LDFLAGS="-L${ERL_LIB_DIR} -gdwarf -lei ${LDFLAGS:-}"
 
 OBJ=""
 for src in "${SRC[@]}"; do
