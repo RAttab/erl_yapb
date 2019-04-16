@@ -260,14 +260,14 @@ bool pb_write_field(
     case pb_32_sfixed:
     case pb_32_float:
         write_tag(writer, field, pb_wire_32);
-        write_data(writer, sizeof(value.u32), &value.u32);
+        write_data(writer, sizeof(value.f32), &value.f32);
         return true;
 
     case pb_64_ufixed:
     case pb_64_sfixed:
     case pb_64_float:
         write_tag(writer, field, pb_wire_64);
-        write_data(writer, sizeof(value.u64), &value.u64);
+        write_data(writer, sizeof(value.f64), &value.f64);
         return true;
 
     case pb_string:

@@ -3,7 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("gpb/include/gpb.hrl").
 
--record(da_record, {a, b, c, d}).
+-record(da_record, {a, b, c, d, e}).
 
 %basic_test() ->
 %    ok = erl_yapb:decode(<<"Derp">>, 1, 1).
@@ -12,23 +12,25 @@ new_test() ->
     Defs = [
             {{msg, da_record}, [
                          #?gpb_field{name = a, fnum = 1, rnum = #da_record.a, type = int32, occurrence = required, opts = []},
-                         #?gpb_field{name = b, fnum = 2, rnum = #da_record.b, type = int32, occurrence = optional, opts = []}
-                         %#?gpb_field{name = c, fnum = 3, rnum = #m4.c, type = int32, occurrence = repeated, opts = []},
-                         %#?gpb_field{name = d, fnum = 4, rnum = #m4.d, type = int32, occurrence = repeated, opts = [packed]}
+                         #?gpb_field{name = b, fnum = 2, rnum = #da_record.b, type = int32, occurrence = optional, opts = []},
+                         #?gpb_field{name = c, fnum = 3, rnum = #da_record.c, type = bool, occurrence = required, opts = []},
+                         #?gpb_field{name = d, fnum = 4, rnum = #da_record.d, type = float, occurrence = required, opts = []},
+                         #?gpb_field{name = e, fnum = 5, rnum = #da_record.e, type = double, occurrence = required, opts = []}
                         ]}
            ],
 
 
-    M4 = #da_record{
+    Da_record = #da_record{
        a = 666,
-       b = 69
-       %c = [67, 68, 69],
-       %d = [67, 68, 69]
+       b = 69,
+       c = true,
+       d = 2.3,
+       e = 696969.125
       },
 
     Schema = erl_yapb:add_schema(Defs),
 
-    Bin = gpb:encode_msg(M4, Defs),
+    Bin = gpb:encode_msg(Da_record, Defs),
     %?debugVal(Bin),
     Gpb = gpb:decode_msg(Bin, da_record, Defs),
     %?debugVal(Gpb),

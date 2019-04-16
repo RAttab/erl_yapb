@@ -12,6 +12,9 @@ static void init(ErlNifEnv* env, struct pb_state *state)
 {
     state->atom_ok = enif_make_atom(env, "ok");
     state->atom_int32 = enif_make_atom(env, "int32");
+    state->atom_int64 = enif_make_atom(env, "int64");
+    state->atom_float = enif_make_atom(env, "float");
+    state->atom_double = enif_make_atom(env, "double");
     state->atom_true = enif_make_atom(env, "true");
     state->atom_false = enif_make_atom(env, "false");
 }
@@ -56,11 +59,12 @@ static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_N
 
     ERL_NIF_TERM *terms = enif_alloc(sizeof(*terms) * message->count + 1);
 
-    //struct htable_ret ret = htable_get(&entries, tag.field);
+    // message name
     terms[0] = argv[1];
     while (reader.it != reader.end) {
         struct pb_tag tag = {0};
         pb_read_tag(&reader, &tag);
+        assert(tag.field > 0);
         enif_fprintf(stderr, "tag: field=%lu, wire=%d\n", tag.field, tag.wire);
 
         const struct pb_field_cache *field = find_field(message, tag.field);
@@ -68,7 +72,6 @@ static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_N
         union pb_value value = {0};
         assert(pb_read_field(&reader, tag.wire, field->type, &value));
 
-        enif_fprintf(stderr, "fuck: %u\n", tag.field);
         terms[tag.field] = make_term_from_type(env, field->type, &value);
 
         //enif_fprintf(stderr, "HAHAHAH: %u\n", tag.wire);
