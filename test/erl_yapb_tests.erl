@@ -28,13 +28,10 @@ new_test() ->
        e = 696969.125
       },
 
-    Schema = erl_yapb:add_schema(Defs),
+    erl_yapb:add_schema(Defs),
 
     Bin = gpb:encode_msg(Da_record, Defs),
-    %?debugVal(Bin),
-    Gpb = gpb:decode_msg(Bin, da_record, Defs),
-    %?debugVal(Gpb),
-    Yapb_decode = erl_yapb:decode(Bin, da_record, Defs),
+    Yapb_decode = erl_yapb:decode(Bin, da_record),
     Gpb_decode = gpb:decode_msg(Bin, da_record, Defs),
     erlang:display({yapb, Yapb_decode}),
     erlang:display({gpb, Gpb_decode}),

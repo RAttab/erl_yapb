@@ -5,7 +5,7 @@
 
 -export([
     encode/0,
-    decode/3,
+    decode/2,
     add_schema/1
 ]).
 
@@ -31,7 +31,7 @@ nif_stub_error(Line) ->
 encode() ->
     ?nif_stub.
 
-decode(_Bin, _Name, _Defs) ->
+decode(_Bin, _Name) ->
     ?nif_stub.
 
 add_schema(_Schema) ->

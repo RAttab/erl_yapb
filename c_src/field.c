@@ -18,7 +18,6 @@ void parse_field(ErlNifEnv *env, ERL_NIF_TERM term, struct pb_field_cache *field
     const ERL_NIF_TERM *field_array = NULL;
 
     enif_get_tuple(env, term, &arity, &field_array);
-    enif_fprintf(stderr, "head: %T\n", term);
     enif_get_int(env, field_array[2], &field->fnum);
     enif_get_int(env, field_array[3], &field->rnum);
     //field->name = msg_array[1];

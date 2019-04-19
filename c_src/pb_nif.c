@@ -47,7 +47,6 @@ static ERL_NIF_TERM nif_encode(ErlNifEnv* env, yapb_unused int argc, yapb_unused
 static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_NIF_TERM argv[])
 {
     ErlNifBinary bin;
-    enif_fprintf(stderr, "decode: %T\n", argv[0]);
     struct pb_reader reader = {0};
     struct pb_state *state = (struct pb_state *) enif_priv_data(env);
     enif_inspect_binary(env, argv[0], &bin);
@@ -65,7 +64,6 @@ static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_N
         struct pb_tag tag = {0};
         pb_read_tag(&reader, &tag);
         assert(tag.field > 0);
-        enif_fprintf(stderr, "tag: field=%lu, wire=%d\n", tag.field, tag.wire);
 
         const struct pb_field_cache *field = find_field(message, tag.field);
 
@@ -90,9 +88,7 @@ static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_N
     }
 
     ERL_NIF_TERM decoded = enif_make_tuple_from_array(env, terms, message->count + 1);
-    enif_fprintf(stderr, "DERPNESS: %T\n", decoded);
     //print_map(&result);
-    print_map(&state->defs);
     return decoded;
 }
 
@@ -135,8 +131,6 @@ static ERL_NIF_TERM nif_add_schema(ErlNifEnv* env, yapb_unused int argc, const E
     }
 
     state->defs = htable;
-    print_map(&state->defs);
-    enif_fprintf(stderr, "HERE: %T\n", state->atom_ok);
 
     return state->atom_ok;
 }
@@ -183,7 +177,7 @@ void print_map(struct htable *htable)
 
 static ErlNifFunc nif_functions[] = {
     {"encode", 0, nif_encode, 0},
-    {"decode", 3, nif_decode, 2},
+    {"decode", 2, nif_decode, 2},
     {"add_schema", 1, nif_add_schema, 2}
 };
 
