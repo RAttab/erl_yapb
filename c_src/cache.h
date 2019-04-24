@@ -9,7 +9,11 @@ struct pb_state
     struct htable defs;
     ERL_NIF_TERM atom_ok;
     ERL_NIF_TERM atom_int32;
+    ERL_NIF_TERM atom_uint32;
+    ERL_NIF_TERM atom_sint32;
     ERL_NIF_TERM atom_int64;
+    ERL_NIF_TERM atom_uint64;
+    ERL_NIF_TERM atom_sint64;
     ERL_NIF_TERM atom_float;
     ERL_NIF_TERM atom_double;
     ERL_NIF_TERM atom_true;

@@ -11,7 +11,7 @@
 new_test() ->
     Defs = [
             {{msg, da_record}, [
-                         #?gpb_field{name = a, fnum = 1, rnum = #da_record.a, type = int32, occurrence = required, opts = []},
+                         #?gpb_field{name = a, fnum = 1, rnum = #da_record.a, type = uint32, occurrence = required, opts = []},
                          #?gpb_field{name = b, fnum = 2, rnum = #da_record.b, type = int32, occurrence = optional, opts = []},
                          #?gpb_field{name = c, fnum = 3, rnum = #da_record.c, type = bool, occurrence = required, opts = []},
                          #?gpb_field{name = d, fnum = 4, rnum = #da_record.d, type = float, occurrence = required, opts = []},

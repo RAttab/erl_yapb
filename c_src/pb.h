@@ -15,12 +15,14 @@ enum pb_type
     pb_bytes,
     pb_string,
 
+    pb_32_int,
     pb_32_uint,
     pb_32_sint,
     pb_32_ufixed,
     pb_32_sfixed,
     pb_32_float,
 
+    pb_64_int,
     pb_64_uint,
     pb_64_sint,
     pb_64_ufixed,

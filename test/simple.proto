@@ -1,6 +1,0 @@
-syntax = "proto3";
-
-message Simple {
-  int32 id = 1;
-  int32 id2 = 2;
-}

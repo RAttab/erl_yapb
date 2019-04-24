@@ -1,5 +1,4 @@
 #include "pb.h"
-
 #include <string.h>
 #include <stdlib.h>
 
@@ -81,6 +80,7 @@ bool pb_read_varint(struct pb_reader *reader, enum pb_type type, union pb_value 
 {
     switch (type) {
 
+    case pb_32_int:
     case pb_32_uint:
     {
         uint64_t data = 0;
@@ -92,6 +92,7 @@ bool pb_read_varint(struct pb_reader *reader, enum pb_type type, union pb_value 
 
     case pb_bool:
     case pb_enum:
+    case pb_64_int:
     case pb_64_uint:
         return read_varint(reader, &value->u64);
 

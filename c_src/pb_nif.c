@@ -12,7 +12,11 @@ static void init(ErlNifEnv* env, struct pb_state *state)
 {
     state->atom_ok = enif_make_atom(env, "ok");
     state->atom_int32 = enif_make_atom(env, "int32");
+    state->atom_uint32 = enif_make_atom(env, "uint32");
+    state->atom_sint32 = enif_make_atom(env, "sint32");
     state->atom_int64 = enif_make_atom(env, "int64");
+    state->atom_uint64 = enif_make_atom(env, "uint64");
+    state->atom_sint64 = enif_make_atom(env, "sint64");
     state->atom_float = enif_make_atom(env, "float");
     state->atom_double = enif_make_atom(env, "double");
     state->atom_true = enif_make_atom(env, "true");
@@ -44,6 +48,20 @@ static ERL_NIF_TERM nif_encode(ErlNifEnv* env, yapb_unused int argc, yapb_unused
     return state->atom_ok;
 }
 
+void hexdump(const uint8_t *buffer, size_t len)
+{
+    for (size_t i = 0; i < len;) {
+        printf("%6p: ", (void *) i);
+        for (size_t j = 0; j < 16 && i < len; ++i, ++j) {
+            if (j % 2 == 0) printf(" ");
+            printf("%02x", buffer[i]);
+        }
+        printf("\n");
+    }
+}
+
+
+
 static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_NIF_TERM argv[])
 {
     ErlNifBinary bin;
@@ -68,6 +86,7 @@ static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_N
         const struct pb_field_cache *field = find_field(message, tag.field);
 
         union pb_value value = {0};
+        //enif_fprintf(stderr, "HAHAHAH: %d\n", field->type);
         assert(pb_read_field(&reader, tag.wire, field->type, &value));
 
         terms[tag.field] = make_term_from_type(env, field->type, &value);

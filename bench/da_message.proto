@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message da_record {
+  uint32 a = 1;
+  uint32 b = 2;
+}
