@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message stvlist {
+  bytes tvid = 1;
+  repeated uint32 ids = 2;
+}
