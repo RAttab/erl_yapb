@@ -6,7 +6,12 @@
 #include "utils/type_pun.h"
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <assert.h>
+
+static uint64_t stats_sum = 0;
+static uint64_t stats_iterations = 0;
+static size_t stats_values[1000000] = {0};
 
 static void init(ErlNifEnv* env, struct pb_state *state)
 {
@@ -60,10 +65,35 @@ void hexdump(const uint8_t *buffer, size_t len)
     }
 }
 
+inline void yapb_timer_start(struct timespec *t0)
+{
+    if (clock_gettime(CLOCK_MONOTONIC, t0)) abort();
+}
 
+inline uint64_t yapb_timer_elapsed(struct timespec *t0)
+{
+    struct timespec t1;
+    if (clock_gettime(CLOCK_MONOTONIC, &t1)) abort();
+
+    const uint64_t nano_sec = 1UL * 1000 * 1000 * 1000;
+
+    uint64_t secs = t1.tv_sec - t0->tv_sec;
+    uint64_t nanos = secs ?
+        (nano_sec - t1.tv_nsec) + t0->tv_nsec :
+        (uint64_t) (t1.tv_nsec - t0->tv_nsec);
+    if (nanos > 10000)
+    {
+        enif_fprintf(stderr, "secs: %lu nanos: %lu ", secs, nanos);
+        enif_fprintf(stderr, "t1.tv_sec: %lu t0.tv_sec: %lu ", t1.tv_sec, t0->tv_sec);
+        enif_fprintf(stderr, "t1.tv_nsec: %lu t0.tv_nsec: %lu \n", t1.tv_nsec, t0->tv_nsec);
+    }
+    return nanos;
+}
 
 static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_NIF_TERM argv[])
 {
+    struct timespec time = {0};
+    yapb_timer_start(&time);
     ErlNifBinary bin;
     struct pb_reader reader = {0};
     struct pb_state *state = (struct pb_state *) enif_priv_data(env);
@@ -90,25 +120,42 @@ static ERL_NIF_TERM nif_decode(ErlNifEnv* env, yapb_unused int argc, const ERL_N
         assert(pb_read_field(&reader, tag.wire, field->type, &value));
 
         terms[tag.field] = make_term_from_type(env, field->type, &value);
-
-        //enif_fprintf(stderr, "HAHAHAH: %u\n", tag.wire);
-        //enif_fprintf(stderr, "HAHAHAH: %u\n", field->type);
-        //enif_fprintf(stderr, "HAHAHAH: %u\n", value.s32);
-
-    //    if (tag.wire != pb_wire_bytes)
-    //        assert(value.u64 == entry->value.u64);
-    //    else {
-    //        size_t len = entry->value.bin.end - entry->value.bin.it;
-    //        assert((value.bin.end - value.bin.it) == (ssize_t) len);
-    //        assert(!memcmp(value.bin.it, entry->value.bin.it, len));
-    //    }
-
-    //    assert(htable_put(&result, entry->field, 0).ok);
     }
 
     ERL_NIF_TERM decoded = enif_make_tuple_from_array(env, terms, message->count + 1);
     //print_map(&result);
+    uint64_t elapsed = yapb_timer_elapsed(&time);
+    stats_sum += elapsed;
+    stats_values[stats_iterations] = elapsed;
+    stats_iterations += 1;
+
     return decoded;
+}
+
+static int lolsort(const void *a, const void *b)
+{
+    uint64_t aa = *((const uint64_t *) a);
+    uint64_t bb = *((const uint64_t *) b);
+    if (aa < bb) { return -1; }
+    if (aa > bb) { return 1; }
+    return 0;
+}
+
+static ERL_NIF_TERM nif_print_stats(ErlNifEnv* env, yapb_unused int argc, yapb_unused const ERL_NIF_TERM argv[])
+{
+    struct pb_state *state = (struct pb_state *) enif_priv_data(env);
+    size_t n = sizeof(stats_values) / sizeof(stats_values[0]);
+
+    qsort(&stats_values, sizeof(stats_values) / sizeof(stats_values[0]), sizeof(stats_values[0]), &lolsort);
+
+    enif_fprintf(stderr, "Average: %lu on %lu iterations\n", stats_sum / stats_iterations, stats_iterations);
+    enif_fprintf(stderr, "min: %lu max: %lu\n", stats_values[0], stats_values[n-1]);
+    enif_fprintf(stderr, "median: %lu\n", stats_values[(n/2)-1]);
+    uint64_t ninetieth = n * 0.9;
+    uint64_t ninetynine = n * 0.99;
+    enif_fprintf(stderr, "90th: %lu\n", stats_values[ninetieth]);
+    enif_fprintf(stderr, "99th: %lu\n", stats_values[ninetynine]);
+    return state->atom_ok;
 }
 
 static ERL_NIF_TERM nif_add_schema(ErlNifEnv* env, yapb_unused int argc, const ERL_NIF_TERM argv[])
@@ -172,31 +219,10 @@ void print_map(struct htable *htable)
     //struct htable_ret ret = htable_get(&htable, msg_name);
 }
 
-//static char *alloc_string(ErlNifBinary bin)
-//{
-//    size_t key_len = bin.size;
-//    char *key = enif_alloc((key_len + 1) * sizeof(*key));
-//    if (!key) {
-//        return NULL;
-//    }
-//
-//    memcpy(key, bin.data, key_len);
-//
-//    key[key_len] = 0;
-//
-//    return key;
-//}
-
-//void infer_schema(struct pb_field_cache *fields, pb_tag tag)
-//{
-//    for (size_t i = 0; i < sizeof(fields); i++){
-//        fields[i]
-//    }
-//}
-
 static ErlNifFunc nif_functions[] = {
     {"encode", 0, nif_encode, 0},
     {"decode", 2, nif_decode, 2},
+    {"print_stats", 0, nif_print_stats, 0},
     {"add_schema", 1, nif_add_schema, 2}
 };
 

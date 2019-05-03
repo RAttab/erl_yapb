@@ -6,7 +6,8 @@
 -export([
     encode/0,
     decode/2,
-    add_schema/1
+    add_schema/1,
+    print_stats/0
 ]).
 
 init() ->
@@ -35,4 +36,7 @@ decode(_Bin, _Name) ->
     ?nif_stub.
 
 add_schema(_Schema) ->
+    ?nif_stub.
+
+print_stats() ->
     ?nif_stub.

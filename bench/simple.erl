@@ -59,24 +59,24 @@ record2() ->
 main([]) ->
 
     Defs = da_message:get_msg_defs(),
-    Defs2 = stvlist:get_msg_defs(),
+    %Defs2 = stvlist:get_msg_defs(),
     erl_yapb:add_schema(Defs),
 
-    N = 10000, P = 1,
-    Records = generate(100, fun() -> record() end, Defs),
-    Records2 = generate(100, fun() -> record2() end, Defs2),
+    N = 1, P = 1,
+    Records = generate(1000000, fun() -> record() end, Defs),
+    %Records2 = generate(100, fun() -> record2() end, Defs2),
     da_message:load_nif(),
-    Alternatives = [{noop, fun () -> true end },
-                    {yapb_decode, fun () -> decode_yapb(Records) end },
-                    {gpb_decode_nif, fun () -> decode_gpb_nif(Records) end },
-                    {gpb_decode, fun () -> decode_gpb(Records, Defs) end }],
+    Alternatives = [
+                    {yapb_decode, fun () -> decode_yapb(Records) end }
+                    ],
 
-    Alternatives2 = [{noop, fun () -> true end },
-                    {stvlist_gpb_decode_nif, fun () -> decode_gpb_nif(Records2, stvlist) end },
-                    {stvlist_gpb_decode, fun () -> decode_gpb(Records2, stvlist, Defs2) end }],
+    %Alternatives2 = [{noop, fun () -> true end },
+    %                {stvlist_gpb_decode_nif, fun () -> decode_gpb_nif(Records2, stvlist) end },
+    %                {stvlist_gpb_decode, fun () -> decode_gpb(Records2, stvlist, Defs2) end }],
     Timings = [{Name, timing:function(Fn, N, P)} || {Name, Fn} <- Alternatives],
-    Timings2 = [{Name, timing:function(Fn, N, P)} || {Name, Fn} <- Alternatives2],
+    %Timings2 = [{Name, timing:function(Fn, N, P)} || {Name, Fn} <- Alternatives2],
     io:format("~p~n", ["DA_MESSAGE"]),
     [io:format("~p~n", [{Name, Timing}]) || {Name, Timing} <- Timings],
     io:format("~p~n", ["STVLIST"]),
-    [io:format("~p~n", [{Name, Timing}]) || {Name, Timing} <- Timings2].
+    %[io:format("~p~n", [{Name, Timing}]) || {Name, Timing} <- Timings2],
+    erl_yapb:print_stats().
